@@ -36,6 +36,23 @@ CREATE TABLE IF NOT EXISTS properties (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS ain VARCHAR(100);
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS county VARCHAR(100);
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS use_type VARCHAR(150);
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS use_description VARCHAR(255);
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS year_built INTEGER;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS units INTEGER;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS bedrooms INTEGER;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS bathrooms NUMERIC;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS sqft INTEGER;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS land_value NUMERIC;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS improvement_value NUMERIC;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS source_name VARCHAR(255);
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS source_url TEXT;
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS leads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -166,6 +183,8 @@ CREATE TABLE IF NOT EXISTS message_templates (
 );
 
 CREATE INDEX IF NOT EXISTS idx_leads_org ON leads(org_id);
+CREATE INDEX IF NOT EXISTS idx_properties_org_apn ON properties(org_id, apn);
+CREATE INDEX IF NOT EXISTS idx_properties_org_address ON properties(org_id, address);
 CREATE INDEX IF NOT EXISTS idx_calls_org_created ON calls(org_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conn_user ON agent_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_recordings_call ON call_recordings(call_id);
