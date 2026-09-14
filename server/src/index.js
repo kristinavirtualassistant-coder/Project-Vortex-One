@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 const auth = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
+const propertyRoutes = require('./routes/property');
 const db = require('./db');
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(express.json({limit:'1mb'}));
 app.get('/api/health', async (req,res)=>{try{await db.query('SELECT 1');res.json({ok:true,service:'vortex-one'});}catch(e){res.status(503).json({ok:false,error:'database unavailable'});}});
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadsRoutes);
+app.use('/api/property', propertyRoutes);
 
 io.use((socket,next)=>{try{const jwt=require('jsonwebtoken');const token=socket.handshake.auth?.token;if(!token)throw new Error();socket.user=jwt.verify(token,process.env.JWT_SECRET);next();}catch(e){next(new Error('Unauthorized'));}});
 io.on('connection',socket=>{socket.join('agent:'+socket.user.userId);socket.emit('ready',{userId:socket.user.userId});socket.on('disconnect',()=>{});});
