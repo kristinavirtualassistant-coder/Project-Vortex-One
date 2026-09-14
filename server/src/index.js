@@ -8,6 +8,7 @@ const auth = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
 const propertyRoutes = require('./routes/property');
+const ownerRoutes = require('./routes/owners');
 const db = require('./db');
 
 const app = express();
@@ -20,6 +21,7 @@ app.get('/api/health', async (req,res)=>{try{await db.query('SELECT 1');res.json
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/property', propertyRoutes);
+app.use('/api/owners', ownerRoutes);
 
 io.use((socket,next)=>{try{const jwt=require('jsonwebtoken');const token=socket.handshake.auth?.token;if(!token)throw new Error();socket.user=jwt.verify(token,process.env.JWT_SECRET);next();}catch(e){next(new Error('Unauthorized'));}});
 io.on('connection',socket=>{socket.join('agent:'+socket.user.userId);socket.emit('ready',{userId:socket.user.userId});socket.on('disconnect',()=>{});});
