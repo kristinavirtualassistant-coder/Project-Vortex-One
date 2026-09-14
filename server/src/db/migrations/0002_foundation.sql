@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','admin','manager','rep','viewer'));
 UPDATE users SET role = 'rep' WHERE role = 'agent';
@@ -43,5 +41,3 @@ ON CONFLICT (organization_id, user_id) DO UPDATE SET role = EXCLUDED.role;
 INSERT INTO system_settings (organization_id)
 SELECT id FROM organizations
 ON CONFLICT (organization_id) DO NOTHING;
-
-COMMIT;
