@@ -7,7 +7,8 @@
     "dev": "concurrently \"node --watch server/src/index.js\" \"vite --host 0.0.0.0\"",
     "start": "node server/src/index.js",
     "build": "vite build",
-    "db:migrate": "node server/src/db/migrate.js"
+    "db:migrate": "node server/src/db/migrate.js",
+    "test:m1": "node server/src/tests/m1-foundation.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
