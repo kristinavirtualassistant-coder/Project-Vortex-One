@@ -1,5 +1,7 @@
 BEGIN;
 
+UPDATE users SET role = 'rep' WHERE role = 'agent';
+
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','admin','manager','rep','viewer'));
 
@@ -36,9 +38,8 @@ CREATE INDEX IF NOT EXISTS idx_members_user ON organization_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_org_created ON audit_logs(organization_id, created_at DESC);
 
 INSERT INTO organization_members (organization_id, user_id, role)
-SELECT id, id, role
-FROM users
-ON CONFLICT (organization_id, user_id) DO NOTHING;
+SELECT org_id, id, role FROM users
+ON CONFLICT (organization_id, user_id) DO UPDATE SET role = EXCLUDED.role;
 
 INSERT INTO system_settings (organization_id)
 SELECT id FROM organizations
