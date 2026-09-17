@@ -7,6 +7,7 @@ const suffix = crypto.randomUUID();
 const email1 = `m1-owner-${suffix}@example.test`;
 const email2 = `m1-owner2-${suffix}@example.test`;
 const password = 'M1-test-password-123!';
+const jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 async function request(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -30,7 +31,7 @@ async function waitForHealth() {
 
 (async () => {
   const server = spawn(process.execPath, ['server/src/index.js'], {
-    env: { ...process.env, PORT: '8080', JWT_SECRET: 'm1-ci-secret' },
+    env: { ...process.env, PORT: '8080', JWT_SECRET: jwtSecret },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   let stderr = '';
@@ -69,6 +70,30 @@ async function waitForHealth() {
     const signedOut = await request('/api/foundation/dashboard');
     assert.equal(signedOut.response.status, 401);
 
+    const csv = [
+      'property_address,city,state,zip,county,apn,property_type,units,bedrooms,bathrooms,sqft,year_built,owner_name,owner_phone,owner_email,mailing_address',
+      '123 Test Ave,Long Beach,CA,90802,Los Angeles,123-456-789,multifamily,4,4,4,3200,1965,Alex Example,5625550100,alex@example.test,123 Test Ave Long Beach CA 90802',
+      '124 Test Ave,Long Beach,CA,90802,Los Angeles,123-456-790,duplex,2,2,2,1600,1970,Jordan Example,5625550101,jordan@example.test,900 Owner St Long Beach CA 90805'
+    ].join('\n');
+    const importResult = await request('/api/imports/csv', {
+      method: 'POST', headers: auth1, body: JSON.stringify({ filename: 'm2-fixture.csv', csv })
+    });
+    assert.equal(importResult.response.status, 201, JSON.stringify(importResult.body));
+    assert.equal(importResult.body.totalRows, 2);
+    assert.equal(importResult.body.importedRows, 2);
+
+    const search = await request('/api/property/search?page=1&pageSize=10&city=Long%20Beach');
+    assert.equal(search.response.status, 200, JSON.stringify(search.body));
+    assert.equal(search.body.total, 2);
+    assert.equal(search.body.items.length, 2);
+    assert.equal(search.body.items[0].owners.length, 1);
+    assert.equal(search.body.provenance.adapter, 'InternalPostgresAdapter');
+
+    const profile = await request(`/api/property/${search.body.items[0].id}`, { headers: auth1 });
+    assert.equal(profile.response.status, 200, JSON.stringify(profile.body));
+    assert.equal(profile.body.owners.length, 1);
+    assert.ok(profile.body.provenance.length > 0);
+
     const register2 = await request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify({ organization: `M1 Org 2 ${suffix}`, name: 'M1 Owner 2', email: email2, password })
@@ -76,9 +101,7 @@ async function waitForHealth() {
     assert.equal(register2.response.status, 201, JSON.stringify(register2.body));
     const token2 = register2.body.token;
 
-    const dashboard2 = await request('/api/foundation/dashboard', {
-      headers: { Authorization: `Bearer ${token2}` }
-    });
+    const dashboard2 = await request('/api/foundation/dashboard', { headers: { Authorization: `Bearer ${token2}` } });
     assert.equal(dashboard2.response.status, 200, JSON.stringify(dashboard2.body));
     assert.deepEqual(dashboard2.body.counts, { properties: 0, owners: 0, leads: 0, calls: 0, members: 1 });
 
@@ -86,7 +109,11 @@ async function waitForHealth() {
     assert.equal(crossOrgMembers.body.items.length, 1);
     assert.notEqual(crossOrgMembers.body.items[0].email, email2);
 
-    console.log('M1 foundation integration checks passed.');
+    const crossOrgSearch = await request('/api/property/search?page=1&pageSize=10', { headers: { Authorization: `Bearer ${token2}` } });
+    assert.equal(crossOrgSearch.response.status, 200, JSON.stringify(crossOrgSearch.body));
+    assert.equal(crossOrgSearch.body.total, 0);
+
+    console.log('M1/M2 foundation and property intelligence integration checks passed.');
   } finally {
     server.kill('SIGTERM');
     if (stderr) process.stderr.write(stderr);
