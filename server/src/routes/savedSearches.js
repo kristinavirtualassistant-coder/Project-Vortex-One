@@ -1,0 +1,11 @@
+const express = require('express');
+const { z } = require('zod');
+const auth = require('../middleware/auth');
+const db = require('../db');
+const router = express.Router();
+router.use(auth);
+const schema=z.object({name:z.string().trim().min(1).max(160),filters:z.record(z.string(),z.unknown()).default({}),sort:z.record(z.string(),z.unknown()).default({})});
+router.get('/',async(req,res)=>{try{const r=await db.query(`SELECT id,name,filters,sort,created_at,updated_at FROM saved_searches WHERE org_id=$1 AND user_id=$2 ORDER BY updated_at DESC`,[req.user.orgId,req.user.userId]);res.json({items:r.rows})}catch(e){res.status(500).json({error:{code:'SAVED_SEARCH_READ_FAILED',message:'Unable to load saved searches'}})}});
+router.post('/',async(req,res)=>{try{const parsed=schema.safeParse(req.body);if(!parsed.success)return res.status(400).json({error:{code:'VALIDATION_ERROR',message:'Invalid saved search',details:parsed.error.flatten()}});const r=await db.query(`INSERT INTO saved_searches(org_id,user_id,name,filters,sort) VALUES($1,$2,$3,$4,$5) RETURNING *`,[req.user.orgId,req.user.userId,parsed.data.name,parsed.data.filters,parsed.data.sort]);await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'saved_search.created','saved_search',$3,$4)`,[req.user.orgId,req.user.userId,r.rows[0].id,{name:parsed.data.name}]);res.status(201).json({savedSearch:r.rows[0]})}catch(e){console.error(e);res.status(500).json({error:{code:'SAVED_SEARCH_CREATE_FAILED',message:'Unable to create saved search'}})}});
+router.delete('/:id',async(req,res)=>{try{const r=await db.query(`DELETE FROM saved_searches WHERE id=$1 AND org_id=$2 AND user_id=$3 RETURNING id`,[req.params.id,req.user.orgId,req.user.userId]);if(!r.rows.length)return res.status(404).json({error:{code:'NOT_FOUND',message:'Saved search not found'}});res.status(204).end()}catch(e){res.status(500).json({error:{code:'SAVED_SEARCH_DELETE_FAILED',message:'Unable to delete saved search'}})}});
+module.exports=router;
