@@ -9,13 +9,14 @@ const leadsRoutes = require('./routes/leads');
 const propertyRoutes = require('./routes/property');
 const ownerRoutes = require('./routes/owners');
 const foundationRoutes = require('./routes/foundation');
+const importsRoutes = require('./routes/imports');
 const db = require('./db');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: process.env.CLIENT_URL || true, credentials: true } });
 app.use(cors({ origin: process.env.CLIENT_URL || true, credentials: true }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 app.get('/api/health', async (req, res) => {
   try { await db.query('SELECT 1'); res.json({ ok: true, service: 'vortex-one' }); }
@@ -27,6 +28,7 @@ app.use('/api/foundation', foundationRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/property', propertyRoutes);
 app.use('/api/owners', ownerRoutes);
+app.use('/api/imports', importsRoutes);
 
 io.use((socket, next) => {
   try {
