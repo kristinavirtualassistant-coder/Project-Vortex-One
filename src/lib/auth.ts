@@ -4,7 +4,7 @@ import { Pool } from 'pg'
 
 let authInstance: ReturnType<typeof betterAuth> | undefined
 
-export function getAuth() {
+export function getAuth(): ReturnType<typeof betterAuth> {
   if (authInstance) return authInstance
 
   const connectionString = process.env.DATABASE_URL
@@ -26,7 +26,7 @@ export function getAuth() {
     }
   }
 
-  authInstance = betterAuth({
+  const auth = betterAuth({
     secret,
     database: new Pool({ connectionString }),
     emailAndPassword: { enabled: true },
@@ -34,5 +34,6 @@ export function getAuth() {
     plugins: [tanstackStartCookies()],
   })
 
+  authInstance = auth as ReturnType<typeof betterAuth>
   return authInstance
 }
