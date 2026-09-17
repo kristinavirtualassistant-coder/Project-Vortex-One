@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
@@ -9,5 +10,10 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
   ],
+  resolve: {
+    alias: {
+      '@': resolve(import.meta.dirname, './src'),
+    },
+  },
   server: { port: 3000 },
 })
