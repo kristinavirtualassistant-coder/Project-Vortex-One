@@ -21,7 +21,6 @@ async function getBetterAuth() {
 async function resolveLegacyMembership(sessionUser) {
   const existing = await db.query(`SELECT u.id,u.org_id,u.role,u.email,u.name FROM users u WHERE LOWER(u.email)=LOWER($1) LIMIT 1`, [sessionUser.email]);
   if (existing.rows.length) return existing.rows[0];
-
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
@@ -34,13 +33,11 @@ async function resolveLegacyMembership(sessionUser) {
     await client.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'organization.created','organization',$1,$3)`, [orgId,user.rows[0].id,{source:'better_auth_first_login'}]);
     await client.query('COMMIT');
     return user.rows[0];
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally { client.release(); }
+  } catch (error) { await client.query('ROLLBACK'); throw error; }
+  finally { client.release(); }
 }
 
-module.exports = async function betterAuthMiddleware(req,res,next) {
+async function betterAuthMiddleware(req,res,next) {
   try {
     const auth = await getBetterAuth();
     const session = await auth.api.getSession({ headers: new Headers(req.headers) });
@@ -49,8 +46,8 @@ module.exports = async function betterAuthMiddleware(req,res,next) {
     req.user = { userId:user.id, orgId:user.org_id, role:user.role, email:user.email, name:user.name, authUserId:session.user.id };
     req.authSession = session;
     next();
-  } catch (error) {
-    console.error(error);
-    res.status(401).json({ error:{code:'UNAUTHENTICATED',message:'Authentication required'} });
-  }
-};
+  } catch (error) { console.error(error); res.status(401).json({ error:{code:'UNAUTHENTICATED',message:'Authentication required'} }); }
+}
+
+betterAuthMiddleware.getBetterAuth = getBetterAuth;
+module.exports = betterAuthMiddleware;
