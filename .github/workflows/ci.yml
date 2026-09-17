@@ -11,7 +11,7 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: vortex_one_test
         ports:
           - 5432:5432
@@ -33,8 +33,9 @@ jobs:
       - run: node --check server/src/services/propertyIntelligence.js
       - run: npm run db:migrate
         env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/vortex_one_test
-      - run: npm run test:m1
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+      - run: |
+          echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          npm run test:m1
         env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/vortex_one_test
-          JWT_SECRET: m1-ci-secret
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
