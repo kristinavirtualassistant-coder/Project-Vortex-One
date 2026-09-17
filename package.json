@@ -8,6 +8,7 @@
     "start": "vite preview",
     "build": "vite build && tsc --noEmit",
     "db:migrate": "node server/src/db/migrate.js",
+    "auth:migrate": "auth migrate --yes",
     "test:m1": "node server/src/tests/m1-foundation.test.js"
   },
   "dependencies": {
