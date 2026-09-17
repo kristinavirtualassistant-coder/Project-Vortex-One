@@ -4,18 +4,28 @@ const http = require('http');
 const cors = require('cors');
 const path = require('path');
 const { Server } = require('socket.io');
-const authRoutes = require('./routes/auth');
 const leadsRoutes = require('./routes/leads');
 const propertyRoutes = require('./routes/property');
 const ownerRoutes = require('./routes/owners');
 const foundationRoutes = require('./routes/foundation');
 const importsRoutes = require('./routes/imports');
+const betterAuth = require('./middleware/betterAuth');
 const db = require('./db');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: process.env.CLIENT_URL || true, credentials: true } });
 app.use(cors({ origin: process.env.CLIENT_URL || true, credentials: true }));
+
+// Better Auth must receive the request before express.json consumes the body.
+app.all('/api/auth/*', async (req, res, next) => {
+  try {
+    const { toNodeHandler } = await import('better-auth/node');
+    const auth = await betterAuth.getBetterAuth();
+    return toNodeHandler(auth)(req, res, next);
+  } catch (error) { return next(error); }
+});
+
 app.use(express.json({ limit: '25mb' }));
 
 app.get('/api/health', async (req, res) => {
@@ -23,7 +33,6 @@ app.get('/api/health', async (req, res) => {
   catch { res.status(503).json({ ok: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Database unavailable' } }); }
 });
 
-app.use('/api/auth', authRoutes);
 app.use('/api/foundation', foundationRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/property', propertyRoutes);
