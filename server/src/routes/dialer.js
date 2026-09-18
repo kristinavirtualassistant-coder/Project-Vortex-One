@@ -1,13 +1,21 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const ringCentral = require('../services/ringcentral');
 
 const router = express.Router();
 router.use(auth);
 
 const canOperate = role => ['owner', 'admin', 'manager', 'rep'].includes(role);
-const canManage = role => ['owner', 'admin', 'manager'].includes(role);
 const terminalStatuses = new Set(['completed', 'failed', 'cancelled']);
+
+function mapProviderStatus(status) {
+  const value = String(status || '').toLowerCase();
+  if (['success', 'completed', 'disconnected'].includes(value)) return 'completed';
+  if (['failed', 'error', 'busy', 'noanswer', 'no answer', 'rejected'].includes(value)) return 'failed';
+  if (['ringing', 'proceeding', 'setup', 'inprogress', 'in progress'].includes(value)) return 'in_progress';
+  return 'queued';
+}
 
 async function assertLead(orgId, leadId) {
   const result = await db.query('SELECT id,phone FROM leads WHERE id=$1 AND org_id=$2', [leadId, orgId]);
@@ -65,10 +73,46 @@ router.post('/calls', async (req, res) => {
       const session = await db.query('SELECT id FROM dialer_sessions WHERE id=$1 AND org_id=$2 AND user_id=$3 AND status=\'active\'', [sessionId, req.user.orgId, req.user.userId]);
       if (!session.rows.length) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Active dialer session not found' } });
     }
-    const result = await db.query(`INSERT INTO calls(org_id,lead_id,user_id,session_id,direction,status,to_number) VALUES($1,$2,$3,$4,'outbound','queued',$5) RETURNING *`, [req.user.orgId, leadId, req.user.userId, sessionId, lead.phone]);
-    await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'call.queued','call',$3,$4)`, [req.user.orgId, req.user.userId, result.rows[0].id, { lead_id: leadId, session_id: sessionId }]);
-    res.status(201).json({ call: result.rows[0], execution: { status: 'queued', provider: 'none_configured' } });
-  } catch (error) { console.error(error); res.status(500).json({ error: { code: 'CALL_CREATE_FAILED', message: 'Failed to queue call' } }); }
+
+    const result = await db.query(`INSERT INTO calls(org_id,lead_id,user_id,session_id,direction,status,to_number,from_number) VALUES($1,$2,$3,$4,'outbound','queued',$5,$6) RETURNING *`, [req.user.orgId, leadId, req.user.userId, sessionId, lead.phone, process.env.DEFAULT_CALLER_ID || null]);
+    const call = result.rows[0];
+    let execution = { status: 'queued', provider: 'not_configured' };
+
+    if (ringCentral.configured()) {
+      try {
+        const provider = await ringCentral.placeRingOut({ toNumber: lead.phone, fromNumber: process.env.DEFAULT_CALLER_ID || undefined });
+        const mappedStatus = mapProviderStatus(provider.callStatus);
+        const updated = await db.query(`UPDATE calls SET provider_call_id=$3,status=$4,started_at=CASE WHEN $4 IN ('ringing','in_progress','completed') THEN COALESCE(started_at,NOW()) ELSE started_at END,ended_at=CASE WHEN $4 IN ('completed','failed') THEN COALESCE(ended_at,NOW()) ELSE ended_at END WHERE id=$1 AND org_id=$2 RETURNING *`, [call.id, req.user.orgId, provider.providerCallId, mappedStatus]);
+        execution = { status: mappedStatus, provider: provider.provider, provider_call_id: provider.providerCallId, provider_status: provider.callStatus };
+        if (mappedStatus === 'completed') execution.status = 'completed';
+        if (updated.rows.length) call.status = updated.rows[0].status;
+        call.provider_call_id = provider.providerCallId;
+      } catch (providerError) {
+        await db.query(`UPDATE calls SET status='failed',ended_at=NOW() WHERE id=$1 AND org_id=$2`, [call.id, req.user.orgId]);
+        execution = { status: 'failed', provider: 'ringcentral', error_code: 'PROVIDER_CALL_FAILED' };
+      }
+    }
+
+    await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,$3,'call',$4,$5)`, [req.user.orgId, req.user.userId, execution.status === 'failed' ? 'call.failed' : 'call.queued', call.id, { lead_id: leadId, session_id: sessionId, provider: execution.provider }]);
+    const latest = await db.query('SELECT * FROM calls WHERE id=$1 AND org_id=$2', [call.id, req.user.orgId]);
+    res.status(201).json({ call: latest.rows[0], execution });
+  } catch (error) { console.error(error); res.status(500).json({ error: { code: 'CALL_CREATE_FAILED', message: 'Failed to create call' } }); }
+});
+
+router.get('/calls/:id/provider-status', async (req, res) => {
+  if (!canOperate(req.user.role)) return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Dialer access denied' } });
+  try {
+    const current = await db.query('SELECT * FROM calls WHERE id=$1 AND org_id=$2 AND user_id=$3', [req.params.id, req.user.orgId, req.user.userId]);
+    if (!current.rows.length) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Call not found' } });
+    const call = current.rows[0];
+    if (!call.provider_call_id) return res.status(409).json({ error: { code: 'NO_PROVIDER_CALL', message: 'Call has no provider call ID' } });
+    const provider = await ringCentral.getRingOut(call.provider_call_id);
+    if (!provider.configured) return res.status(503).json({ error: { code: 'PROVIDER_NOT_CONFIGURED', message: 'RingCentral is not configured' } });
+    const mappedStatus = mapProviderStatus(provider.callStatus);
+    const updated = await db.query(`UPDATE calls SET status=$3,started_at=CASE WHEN $3 IN ('ringing','in_progress','completed') THEN COALESCE(started_at,NOW()) ELSE started_at END,ended_at=CASE WHEN $3 IN ('completed','failed') THEN COALESCE(ended_at,NOW()) ELSE ended_at END WHERE id=$1 AND org_id=$2 AND user_id=$4 RETURNING *`, [call.id, req.user.orgId, mappedStatus, req.user.userId]);
+    await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'call.provider_status_synced','call',$3,$4)`, [req.user.orgId, req.user.userId, call.id, { provider: 'ringcentral', provider_status: provider.callStatus, mapped_status: mappedStatus }]);
+    res.json({ call: updated.rows[0], provider });
+  } catch (error) { console.error(error); res.status(502).json({ error: { code: 'PROVIDER_STATUS_FAILED', message: 'Failed to synchronize provider call status' } }); }
 });
 
 router.patch('/calls/:id', async (req, res) => {
