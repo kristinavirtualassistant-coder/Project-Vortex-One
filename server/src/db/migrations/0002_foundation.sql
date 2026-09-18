@@ -1,15 +1,6 @@
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 UPDATE users SET role = 'rep' WHERE role = 'agent';
-DO $
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conname = 'users_role_check'
-      AND conrelid = 'users'::regclass
-  ) THEN
-    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','admin','manager','rep','viewer'));
-  END IF;
-END $;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','admin','manager','rep','viewer'));
 
 CREATE TABLE IF NOT EXISTS organization_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
