@@ -5,7 +5,7 @@ import {
   Scripts,
   createRootRoute,
 } from '@tanstack/react-router'
-import { RootLayout } from './root'
+import { RootLayout } from './-root'
 
 import '../styles.css'
 
