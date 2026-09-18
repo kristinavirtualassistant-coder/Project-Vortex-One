@@ -26,7 +26,8 @@ async function getBetterAuth() {
     secret,
     baseURL: process.env.BETTER_AUTH_URL || process.env.CLIENT_URL,
     trustedOrigins: getTrustedOrigins(),
-    emailAndPassword: { enabled: true }
+    emailAndPassword: { enabled: true },
+    advanced: { database: { generateId: 'uuid' } }
   });
   return authInstance;
 }
