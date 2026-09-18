@@ -29,9 +29,9 @@ async function waitForServer() {
     env: {
       ...process.env,
       PORT: '8080',
-      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET || 'smoke-test-secret-012345678901234567890123',
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
       BETTER_AUTH_URL: baseUrl,
-      JWT_SECRET: process.env.JWT_SECRET || 'smoke-jwt-secret-012345678901234567890123456'
+      JWT_SECRET: process.env.JWT_SECRET
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
