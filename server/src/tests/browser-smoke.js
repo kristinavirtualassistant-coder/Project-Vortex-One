@@ -33,6 +33,7 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
     });
     assert.equal(session.status, 200, JSON.stringify(session));
     assert.ok(session.body?.user, `Authenticated browser session missing user: ${JSON.stringify(session.body)}`);
+    await page.waitForFunction(() => document.querySelector('h1')?.textContent?.trim() === 'Dashboard', null, { timeout: 15000 });
 
     try {
       await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor({ timeout: 15000 });
