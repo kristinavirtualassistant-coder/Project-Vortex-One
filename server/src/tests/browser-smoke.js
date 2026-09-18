@@ -43,7 +43,7 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
       console.log('[browser diagnostic] body=' + (await page.locator('body').innerText()).slice(0, 5000));
       throw error;
     }
-    await page.getByText('LIVE DATA').waitFor();
+    await page.getByText('LIVE DATA', { exact: true }).waitFor();
 
     for (const label of ['Properties', 'Owners', 'Leads', 'Contacts', 'Tasks', 'Campaigns', 'Dialer', 'Imports', 'Reports', 'Data Quality', 'Activity', 'Settings', 'Admin']) {
       await page.getByRole('button', { name: label, exact: true }).click();
