@@ -32,6 +32,7 @@ jobs:
       - run: node --check server/src/routes/property.js
       - run: node --check server/src/routes/owners.js
       - run: node --check server/src/services/propertyIntelligence.js
+      - run: node --check server/src/services/ringcentral.js
       - run: node --check server/src/routes/tasks.js
       - run: node --check server/src/routes/reports.js
       - run: node --check server/src/routes/dataQuality.js
