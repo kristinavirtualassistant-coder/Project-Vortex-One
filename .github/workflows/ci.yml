@@ -33,6 +33,8 @@ jobs:
       - run: node --check server/src/routes/owners.js
       - run: node --check server/src/services/propertyIntelligence.js
       - run: node --check server/src/routes/tasks.js
+      - run: node --check server/src/routes/reports.js
+      - run: node --check server/src/routes/dataQuality.js
       - run: npm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
