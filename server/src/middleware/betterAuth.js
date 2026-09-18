@@ -6,7 +6,7 @@ let authInstance;
 let authPool;
 
 function getTrustedOrigins() {
-  return [process.env.BETTER_AUTH_URL, process.env.CLIENT_URL, 'http://127.0.0.1:8080', 'http://localhost:8080']
+  return [process.env.BETTER_AUTH_URL, process.env.CLIENT_URL, 'http://127.0.0.1:8080', 'http://localhost:8080', 'http://127.0.0.1:3000', 'http://localhost:3000']
     .filter(Boolean)
     .flatMap((value) => String(value).split(',').map((item) => item.trim()))
     .filter(Boolean);
