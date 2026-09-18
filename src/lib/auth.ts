@@ -34,6 +34,5 @@ export function getAuth(): ReturnType<typeof betterAuth> {
     plugins: [tanstackStartCookies()],
   })
 
-  authInstance = auth
-  return authInstance
+  return (authInstance = auth)
 }
