@@ -10,10 +10,20 @@ const made=await request('/api/tasks',{method:'POST',headers:{Cookie:c1},body:JS
 assert.equal(made.r.status,201,JSON.stringify(made.body));
 const property=await request('/api/property',{method:'POST',headers:{Cookie:c1},body:JSON.stringify({address:'Workflow isolation test'})});
 assert.equal(property.r.status,201,JSON.stringify(property.body));
+const lead=await request('/api/leads',{method:'POST',headers:{Cookie:c1},body:JSON.stringify({property_id:property.body.property.id,phone:'+15625550199',source:'workflow-test',status:'new'})});
+assert.equal(lead.r.status,201,JSON.stringify(lead.body));
+const updated=await request('/api/leads/'+lead.body.lead.id,{method:'PATCH',headers:{Cookie:c1},body:JSON.stringify({status:'interested',lead_score:85})});
+assert.equal(updated.r.status,200,JSON.stringify(updated.body));assert.equal(updated.body.lead.status,'interested');assert.equal(Number(updated.body.lead.lead_score),85);
+const note=await request('/api/leads/'+lead.body.lead.id+'/notes',{method:'POST',headers:{Cookie:c1},body:JSON.stringify({body:'Workflow note'})});
+assert.equal(note.r.status,201,JSON.stringify(note.body));
+const detail=await request('/api/leads/'+lead.body.lead.id,{headers:{Cookie:c1}});assert.equal(detail.r.status,200);assert.equal(detail.body.notes.length,1);assert.ok(detail.body.activities.length>=3);
 const own=await request('/api/tasks',{headers:{Cookie:c1}});assert.equal(own.r.status,200);assert.equal(own.body.items.length,1);
 const c2=await signup('workflow2-'+crypto.randomUUID()+'@example.test');
 const other=await request('/api/tasks',{headers:{Cookie:c2}});assert.equal(other.r.status,200);assert.equal(other.body.items.length,0);
 const cross=await request('/api/tasks',{method:'POST',headers:{Cookie:c2},body:JSON.stringify({title:'Must be rejected',property_id:property.body.property.id})});
 assert.equal(cross.r.status,400,JSON.stringify(cross.body));assert.equal(cross.body.error.code,'CROSS_ORGANIZATION_REFERENCE');
-console.log('Workflow task isolation and cross-organization reference checks passed.');
+const crossLead=await request('/api/leads',{method:'POST',headers:{Cookie:c2},body:JSON.stringify({property_id:property.body.property.id,phone:'+15625550198'})});
+assert.equal(crossLead.r.status,400,JSON.stringify(crossLead.body));assert.equal(crossLead.body.error.code,'CROSS_ORGANIZATION_REFERENCE');
+const hiddenLead=await request('/api/leads',{headers:{Cookie:c2}});assert.equal(hiddenLead.r.status,200);assert.equal(hiddenLead.body.length,0);
+console.log('Workflow task, lead CRUD/activity, and cross-organization reference checks passed.');
 }finally{server.kill('SIGTERM')}})().catch(e=>{console.error(e);process.exit(1)})
