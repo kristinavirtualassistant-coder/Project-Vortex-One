@@ -45,9 +45,6 @@ jobs:
           echo "BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET" >> "$GITHUB_ENV"
           echo "JWT_SECRET=$JWT_SECRET" >> "$GITHUB_ENV"
           echo "BETTER_AUTH_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
-      - run: npx auth@latest migrate --yes
-        env:
-          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
       - run: |
           npm run test:m1
           npm run test:workflows
