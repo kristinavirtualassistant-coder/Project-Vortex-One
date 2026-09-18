@@ -14,6 +14,7 @@ const importScanRoutes = require('./routes/importScan');
 const savedSearchRoutes = require('./routes/savedSearches');
 const tasksRoutes = require('./routes/tasks');
 const campaignsRoutes = require('./routes/campaigns');
+const dialerRoutes = require('./routes/dialer');
 const betterAuth = require('./middleware/betterAuth');
 const db = require('./db');
 
@@ -71,6 +72,7 @@ app.use('/api/imports/scan', importScanRoutes);
 app.use('/api/saved-searches', savedSearchRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/campaigns', campaignsRoutes);
+app.use('/api/dialer', dialerRoutes);
 
 const io = new Server(server, { cors: corsOptions });
 io.use((socket, next) => {
