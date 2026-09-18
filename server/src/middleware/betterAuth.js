@@ -33,18 +33,30 @@ async function getBetterAuth() {
 }
 
 async function resolveLegacyMembership(sessionUser) {
-  const existing = await db.query(`SELECT u.id,u.org_id,u.role,u.email,u.name FROM users u WHERE LOWER(u.email)=LOWER($1) LIMIT 1`, [sessionUser.email]);
+  const email = String(sessionUser.email || '').trim().toLowerCase();
+  if (!email) throw new Error('Authenticated user email is required');
+  const existing = await db.query('SELECT u.id,u.org_id,u.role,u.email,u.name FROM users u WHERE LOWER(u.email)=LOWER($1) LIMIT 1', [email]);
   if (existing.rows.length) return existing.rows[0];
+
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    const organization = await client.query(`INSERT INTO organizations(name) VALUES($1) RETURNING id`, [`${sessionUser.name || sessionUser.email}'s Organization`]);
+    // Multiple authenticated requests can arrive immediately after signup.
+    // Serialize first-login mapping by email so only one legacy membership is created.
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [email]);
+    const lockedExisting = await client.query('SELECT u.id,u.org_id,u.role,u.email,u.name FROM users u WHERE LOWER(u.email)=LOWER($1) LIMIT 1', [email]);
+    if (lockedExisting.rows.length) {
+      await client.query('COMMIT');
+      return lockedExisting.rows[0];
+    }
+
+    const organization = await client.query('INSERT INTO organizations(name) VALUES($1) RETURNING id', [(sessionUser.name || email) + "'s Organization"]);
     const orgId = organization.rows[0].id;
     const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
-    const user = await client.query(`INSERT INTO users(org_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,'owner') RETURNING id,org_id,role,email,name`, [orgId, sessionUser.name || sessionUser.email, sessionUser.email.toLowerCase(), passwordHash]);
-    await client.query(`INSERT INTO organization_members(organization_id,user_id,role) VALUES($1,$2,'owner')`, [orgId,user.rows[0].id]);
-    await client.query(`INSERT INTO system_settings(organization_id) VALUES($1) ON CONFLICT (organization_id) DO NOTHING`, [orgId]);
-    await client.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'organization.created','organization',$1,$3)`, [orgId,user.rows[0].id,{source:'better_auth_first_login'}]);
+    const user = await client.query('INSERT INTO users(org_id,name,email,password_hash,role) VALUES($1,$2,$3,$4,\'owner\') RETURNING id,org_id,role,email,name', [orgId, sessionUser.name || email, email, passwordHash]);
+    await client.query('INSERT INTO organization_members(organization_id,user_id,role) VALUES($1,$2,\'owner\')', [orgId,user.rows[0].id]);
+    await client.query('INSERT INTO system_settings(organization_id) VALUES($1) ON CONFLICT (organization_id) DO NOTHING', [orgId]);
+    await client.query('INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,\'organization.created\',\'organization\',$1,$3)', [orgId,user.rows[0].id,{source:'better_auth_first_login'}]);
     await client.query('COMMIT');
     return user.rows[0];
   } catch (error) { await client.query('ROLLBACK'); throw error; }
