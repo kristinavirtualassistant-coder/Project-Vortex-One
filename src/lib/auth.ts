@@ -32,3 +32,5 @@ export function getAuth() {
 
   return auth
 }
+
+export const auth = getAuth()
