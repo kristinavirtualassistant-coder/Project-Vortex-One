@@ -51,8 +51,8 @@ async function waitForServer() {
     assert.ok(cookie, 'authentication session cookie was not returned');
 
     const dashboard = await request('/api/foundation/dashboard', { headers: { Cookie: cookie } });
-    assert.equal(dashboard.status, 200, await dashboard.text());
-    const dashboardBody = dashboard.body;
+    assert.equal(dashboard.status, 200);
+    const dashboardBody = await dashboard.json();
     assert.deepEqual(Object.keys(dashboardBody.counts).sort(), ['calls', 'leads', 'members', 'owners', 'properties']);
 
     const signout = await request('/api/auth/sign-out', { method: 'POST', headers: { Cookie: cookie } });
