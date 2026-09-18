@@ -1,10 +1,18 @@
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const db = require('./index');
+import 'dotenv/config';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Pool } from 'pg';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function migrate() {
-  const client = await db.pool.connect();
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  });
+  const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
@@ -12,7 +20,7 @@ async function migrate() {
 
     const migrationsDir = path.join(__dirname, 'migrations');
     if (fs.existsSync(migrationsDir)) {
-      for (const file of fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort()) {
+      for (const file of fs.readdirSync(migrationsDir).filter((name) => name.endsWith('.sql')).sort()) {
         await client.query(fs.readFileSync(path.join(migrationsDir, file), 'utf8'));
         console.log(`Applied ${file}`);
       }
@@ -25,11 +33,11 @@ async function migrate() {
     throw err;
   } finally {
     client.release();
-    await db.pool.end();
+    await pool.end();
   }
 }
 
-migrate().catch(err => {
+migrate().catch((err) => {
   console.error(err.message);
   process.exit(1);
 });
