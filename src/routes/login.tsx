@@ -18,7 +18,7 @@ function LoginPage() {
     const result = await authClient.signIn.email({ email, password })
     setPending(false)
     if (result.error) {
-      setError(result.error.message ?? 'Sign in failed')
+      setError(result.error?.message ?? 'Sign in failed')
       return
     }
     await navigate({ to: '/' })
