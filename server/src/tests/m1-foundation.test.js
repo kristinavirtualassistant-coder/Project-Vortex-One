@@ -26,7 +26,7 @@ async function signup(email,name){
 async function waitForHealth(){for(let i=0;i<40;i+=1){try{const {response}=await request('/api/health');if(response.ok)return;}catch{}await new Promise(r=>setTimeout(r,250));}throw new Error('Vortex One server did not become healthy');}
 
 (async()=>{
-  const server=spawn(process.execPath,['server/src/index.js'],{env:{...process.env,PORT:'8080',BETTER_AUTH_SECRET:process.env.BETTER_AUTH_SECRET||'m1-better-auth-secret-012345678901234567890123'},stdio:['ignore','pipe','pipe']}); let stderr=''; server.stderr.on('data',c=>{stderr+=c.toString();});
+  const server=spawn(process.execPath,['server/src/index.js'],{env:{...process.env,PORT:'8080',BETTER_AUTH_SECRET:process.env.BETTER_AUTH_SECRET},stdio:['ignore','pipe','pipe']}); let stderr=''; server.stderr.on('data',c=>{stderr+=c.toString();});
   try{
     await waitForHealth();
     const cookie1=await signup(email1,'M1 Owner'); const auth1={Cookie:cookie1};
