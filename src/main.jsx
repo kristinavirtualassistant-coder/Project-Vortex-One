@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
-import Reports from './reports.jsx';
-import DataQuality from './dataQuality.jsx';
 
 const nav = [
   ['Dashboard', 'dashboard'], ['Properties', 'properties'], ['Owners', 'owners'], ['Leads', 'leads'],
