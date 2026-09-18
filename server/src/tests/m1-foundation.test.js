@@ -9,7 +9,7 @@ const email2 = `m1-owner2-${suffix}@example.test`;
 const password = 'M1-test-password-123!';
 
 async function request(path, options = {}) {
-  const response = await fetch(`${baseUrl}${path}`, {...options,headers:{'content-type':'application/json',...(options.headers||{})}});
+  const response = await fetch(`${baseUrl}${path}`, {...options,headers:{'content-type':'application/json','origin':baseUrl,...(options.headers||{})}});
   const body=await response.json().catch(()=>({}));
   return {response,body};
 }
