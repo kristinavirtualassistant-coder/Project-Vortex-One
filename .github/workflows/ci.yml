@@ -36,17 +36,17 @@ jobs:
       - run: npm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+      - name: Generate ephemeral CI secrets
+        run: |
+          echo "BETTER_AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> "$GITHUB_ENV"
+          echo "JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> "$GITHUB_ENV"
+          echo "BETTER_AUTH_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
       - run: npx auth@latest migrate --yes
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
-          BETTER_AUTH_SECRET: ci-better-auth-secret-012345678901234567890123
-          BETTER_AUTH_URL: http://127.0.0.1:8080
       - run: |
-          echo "JWT_SECRET=ci-generated-test-secret" >> "$GITHUB_ENV"
           npm run test:m1
           npm run test:workflows
           npm run test:smoke
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
-          BETTER_AUTH_SECRET: ci-better-auth-secret-012345678901234567890123
-          BETTER_AUTH_URL: http://127.0.0.1:8080
