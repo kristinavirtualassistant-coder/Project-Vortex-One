@@ -4,17 +4,39 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: vortex_one_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vortex_one_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install
       - run: npm run build
       - run: node --check server/src/index.js
       - run: node --check server/src/routes/property.js
       - run: node --check server/src/routes/owners.js
       - run: node --check server/src/services/propertyIntelligence.js
+      - run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+      - run: |
+          echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          npm run test:m1
+        env:
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
