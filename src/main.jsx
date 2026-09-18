@@ -4,7 +4,7 @@ import './styles.css';
 
 const nav = [
   ['Dashboard', 'dashboard'], ['Properties', 'properties'], ['Owners', 'owners'], ['Leads', 'leads'],
-  ['Contacts', 'contacts'], ['Tasks', 'tasks'], ['Imports', 'imports'], ['Activity', 'activity'], ['Settings', 'settings'], ['Admin', 'admin']
+  ['Contacts', 'contacts'], ['Tasks', 'tasks'], ['Campaigns', 'campaigns'], ['Dialer', 'dialer'], ['Imports', 'imports'], ['Activity', 'activity'], ['Settings', 'settings'], ['Admin', 'admin']
 ];
 const pendingModules = ['Reports', 'Data Quality'];
 
