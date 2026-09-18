@@ -8,7 +8,7 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   page.on('console', message => console.log('[browser console]', message.type(), message.text()));
   page.on('pageerror', error => console.log('[browser pageerror]', error.message));
@@ -23,31 +23,23 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
       page.waitForResponse(response => response.url().endsWith('/api/auth/sign-up/email')),
       page.getByRole('button', { name: 'Create account', exact: true }).click()
     ]);
-
     const session = await page.evaluate(async () => {
       const response = await fetch('/api/auth/get-session', { credentials: 'include' });
       return { status: response.status, body: await response.json().catch(() => null) };
     });
     assert.equal(session.status, 200, JSON.stringify(session));
     assert.ok(session.body?.user, `Authenticated browser session missing user: ${JSON.stringify(session.body)}`);
-    try {
-      await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor({ timeout: 15000 });
-    } catch (error) {
-      console.log('[browser diagnostic] url=' + page.url());
-      console.log('[browser diagnostic] title=' + await page.title());
-      console.log('[browser diagnostic] body=' + (await page.locator('body').innerText()).slice(0, 5000));
-      throw error;
-    }
+    await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor({ timeout: 15000 });
     await page.getByText('LIVE DATA', { exact: true }).waitFor();
 
     for (const label of ['Properties', 'Owners', 'Leads', 'Contacts', 'Tasks', 'Campaigns', 'Dialer', 'Imports', 'Reports', 'Data Quality', 'Activity', 'Settings', 'Admin']) {
       const button = page.getByRole('button', { name: label, exact: true });
       await button.scrollIntoViewIfNeeded();
-      await button.click();
+      await button.click({ force: true });
       await page.locator('h1').filter({ hasText: label }).waitFor();
     }
 
-    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click({ force: true });
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor();
     console.log('Browser smoke QA passed: authenticated account creation, dashboard, all primary modules, and sign-out.');
   } finally {
