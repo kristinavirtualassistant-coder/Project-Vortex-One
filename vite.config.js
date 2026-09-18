@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+const { defineConfig } = require('vite');
+const react = require('@vitejs/plugin-react');
 
 const reportsComponent = `
 function Reports(){
@@ -23,7 +23,7 @@ function Reports(){
 }
 `;
 
-export default defineConfig({
+module.exports = defineConfig({
   plugins: [react(), {
     name: 'vortex-reports-component',
     transform(code, id) {
