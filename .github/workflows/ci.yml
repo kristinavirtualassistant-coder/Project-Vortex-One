@@ -53,3 +53,18 @@ jobs:
           npm run test:smoke
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+      - name: Install browser QA runtime
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Start application for browser QA
+        run: |
+          DATABASE_URL=postgresql://postgres@127.0.0.1:5432/vortex_one_test npm start > /tmp/vortex-one.log 2>&1 &
+          for i in $(seq 1 30); do curl --fail --silent http://127.0.0.1:8080/api/health && exit 0; sleep 1; done
+          cat /tmp/vortex-one.log
+          exit 1
+      - name: Run browser QA
+        run: node server/src/tests/browser-smoke.js
+        env:
+          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+          TEST_BASE_URL: http://127.0.0.1:8080
