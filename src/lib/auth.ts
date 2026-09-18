@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Pool } from 'pg'
 
-let authInstance: ReturnType<typeof betterAuth> | undefined
+let authInstance: any
 
 export function getAuth() {
   if (authInstance) return authInstance
