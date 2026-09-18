@@ -15,6 +15,8 @@ const savedSearchRoutes = require('./routes/savedSearches');
 const tasksRoutes = require('./routes/tasks');
 const campaignsRoutes = require('./routes/campaigns');
 const dialerRoutes = require('./routes/dialer');
+const reportsRoutes = require('./routes/reports');
+const dataQualityRoutes = require('./routes/dataQuality');
 const betterAuth = require('./middleware/betterAuth');
 const db = require('./db');
 
@@ -73,6 +75,8 @@ app.use('/api/saved-searches', savedSearchRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/campaigns', campaignsRoutes);
 app.use('/api/dialer', dialerRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/data-quality', dataQualityRoutes);
 
 const io = new Server(server, { cors: corsOptions });
 io.use((socket, next) => {
