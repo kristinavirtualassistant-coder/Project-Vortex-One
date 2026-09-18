@@ -42,7 +42,7 @@ jobs:
           BETTER_AUTH_SECRET: ci-better-auth-secret-012345678901234567890123
           BETTER_AUTH_URL: http://127.0.0.1:8080
       - run: |
-          echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET || 'ci-placeholder' }}" >> "$GITHUB_ENV"
           npm run test:m1
           npm run test:workflows
           npm run test:smoke
