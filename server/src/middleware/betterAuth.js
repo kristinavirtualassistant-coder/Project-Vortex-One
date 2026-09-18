@@ -5,6 +5,13 @@ const bcrypt = require('bcryptjs');
 let authInstance;
 let authPool;
 
+function getTrustedOrigins() {
+  return [process.env.BETTER_AUTH_URL, process.env.CLIENT_URL, 'http://127.0.0.1:8080', 'http://localhost:8080']
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(',').map((item) => item.trim()))
+    .filter(Boolean);
+}
+
 async function getBetterAuth() {
   if (authInstance) return authInstance;
   const { betterAuth } = await import('better-auth');
@@ -14,7 +21,13 @@ async function getBetterAuth() {
   if (!secret || secret.length < 32) throw new Error('BETTER_AUTH_SECRET must be at least 32 characters');
   const { Pool } = require('pg');
   authPool = new Pool({ connectionString });
-  authInstance = betterAuth({ database: authPool, secret, emailAndPassword: { enabled: true } });
+  authInstance = betterAuth({
+    database: authPool,
+    secret,
+    baseURL: process.env.BETTER_AUTH_URL || process.env.CLIENT_URL,
+    trustedOrigins: getTrustedOrigins(),
+    emailAndPassword: { enabled: true }
+  });
   return authInstance;
 }
 
