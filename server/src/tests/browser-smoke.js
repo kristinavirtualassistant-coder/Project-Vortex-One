@@ -15,9 +15,6 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
   try {
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await page.getByText('VORTEX ONE').first().waitFor();
-
-    // Exercise account creation in the real browser context so Better Auth's
-    // session cookie is established by the same browser that performs QA.
     await page.getByRole('button', { name: 'Create an account', exact: true }).click();
     await page.getByLabel('Name').fill('Browser QA');
     await page.getByLabel('Email').fill(email);
@@ -33,7 +30,6 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
     });
     assert.equal(session.status, 200, JSON.stringify(session));
     assert.ok(session.body?.user, `Authenticated browser session missing user: ${JSON.stringify(session.body)}`);
-
     try {
       await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor({ timeout: 15000 });
     } catch (error) {
@@ -45,7 +41,9 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
     await page.getByText('LIVE DATA', { exact: true }).waitFor();
 
     for (const label of ['Properties', 'Owners', 'Leads', 'Contacts', 'Tasks', 'Campaigns', 'Dialer', 'Imports', 'Reports', 'Data Quality', 'Activity', 'Settings', 'Admin']) {
-      await page.getByRole('button', { name: label, exact: true }).click();
+      const button = page.getByRole('button', { name: label, exact: true });
+      await button.scrollIntoViewIfNeeded();
+      await button.click();
       await page.locator('h1').filter({ hasText: label }).waitFor();
     }
 
