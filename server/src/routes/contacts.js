@@ -19,10 +19,7 @@ router.get('/', async (req, res) => {
     params.push(limit);
     const result = await db.query(`SELECT c.id,c.owner_id,c.first_name,c.last_name,c.display_name,c.title,c.mailing_address,c.created_at,c.updated_at,o.name owner_name,COALESCE((SELECT json_agg(json_build_object('id',cp.id,'phone',cp.phone,'type',cp.phone_type,'primary',cp.is_primary,'verified_at',cp.verified_at) ORDER BY cp.is_primary DESC,cp.phone) FROM contact_phones cp WHERE cp.contact_id=c.id),'[]') phones,COALESCE((SELECT json_agg(json_build_object('id',ce.id,'email',ce.email,'type',ce.email_type,'primary',ce.is_primary,'verified_at',ce.verified_at) ORDER BY ce.is_primary DESC,ce.email) FROM contact_emails ce WHERE ce.contact_id=c.id),'[]') emails FROM contacts c LEFT JOIN owners o ON o.id=c.owner_id AND o.org_id=c.org_id WHERE ${where} ORDER BY COALESCE(c.display_name,c.last_name,c.first_name) LIMIT $${params.length}`, params);
     res.json({ items: result.rows });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: { code: 'CONTACT_SEARCH_FAILED', message: 'Unable to load contacts' } });
-  }
+  } catch (error) { console.error(error); res.status(500).json({ error: { code: 'CONTACT_SEARCH_FAILED', message: 'Unable to load contacts' } }); }
 });
 
 router.get('/:id', async (req, res) => {
@@ -32,10 +29,7 @@ router.get('/:id', async (req, res) => {
     const phones = await db.query('SELECT id,phone,phone_type,is_primary,verified_at,created_at FROM contact_phones WHERE contact_id=$1 ORDER BY is_primary DESC,phone', [req.params.id]);
     const emails = await db.query('SELECT id,email,email_type,is_primary,verified_at,created_at FROM contact_emails WHERE contact_id=$1 ORDER BY is_primary DESC,email', [req.params.id]);
     res.json({ contact: contact.rows[0], phones: phones.rows, emails: emails.rows });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: { code: 'CONTACT_READ_FAILED', message: 'Unable to load contact' } });
-  }
+  } catch (error) { console.error(error); res.status(500).json({ error: { code: 'CONTACT_READ_FAILED', message: 'Unable to load contact' } }); }
 });
 
 router.post('/', async (req, res) => {
@@ -48,7 +42,11 @@ router.post('/', async (req, res) => {
     await client.query('BEGIN');
     if (b.owner_id) {
       const owner = await client.query('SELECT id FROM owners WHERE id=$1 AND org_id=$2', [b.owner_id, req.user.orgId]);
-      if (!owner.rows.length) return res.status(400).json({ error: { code: 'OWNER_NOT_FOUND', message: 'Owner is not in this organization' } });
+      if (!owner.rows.length) {
+        const validationError = new Error('Owner is not in this organization');
+        validationError.status = 400; validationError.code = 'OWNER_NOT_FOUND';
+        throw validationError;
+      }
     }
     const contact = await client.query('INSERT INTO contacts(org_id,owner_id,first_name,last_name,display_name,title,mailing_address) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [req.user.orgId,b.owner_id||null,b.first_name||null,b.last_name||null,displayName,b.title||null,b.mailing_address||null]);
     if (b.phone) await client.query('INSERT INTO contact_phones(contact_id,phone,phone_type,is_primary) VALUES($1,$2,$3,$4)', [contact.rows[0].id,String(b.phone).trim(),b.phone_type||'primary',true]);
@@ -58,8 +56,8 @@ router.post('/', async (req, res) => {
     res.status(201).json({ contact: contact.rows[0] });
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error(error);
-    res.status(500).json({ error: { code: 'CONTACT_CREATE_FAILED', message: 'Unable to create contact' } });
+    if (error.status) return res.status(error.status).json({ error: { code: error.code, message: error.message } });
+    console.error(error); res.status(500).json({ error: { code: 'CONTACT_CREATE_FAILED', message: 'Unable to create contact' } });
   } finally { client.release(); }
 });
 
