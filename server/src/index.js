@@ -89,7 +89,7 @@ io.on('connection', socket => {
   socket.emit('ready', { userId: socket.user.userId });
 });
 
-const dist = path.join(__dirname, '../../dist/client');
+const dist = path.join(__dirname, '../../dist');
 app.use(express.static(dist, { index: 'index.html', maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0 }));
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Not found' } });
