@@ -10,6 +10,8 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  page.on('console', message => console.log('[browser console]', message.type(), message.text()));
+  page.on('pageerror', error => console.log('[browser pageerror]', error.message));
   try {
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await page.getByText('VORTEX ONE').first().waitFor();
@@ -32,7 +34,14 @@ const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
     assert.equal(session.status, 200, JSON.stringify(session));
     assert.ok(session.body?.user, `Authenticated browser session missing user: ${JSON.stringify(session.body)}`);
 
-    await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor({ timeout: 15000 });
+    try {
+      await page.getByRole('heading', { name: 'Dashboard', exact: true }).waitFor({ timeout: 15000 });
+    } catch (error) {
+      console.log('[browser diagnostic] url=' + page.url());
+      console.log('[browser diagnostic] title=' + await page.title());
+      console.log('[browser diagnostic] body=' + (await page.locator('body').innerText()).slice(0, 5000));
+      throw error;
+    }
     await page.getByText('LIVE DATA').waitFor();
 
     for (const label of ['Properties', 'Owners', 'Leads', 'Contacts', 'Tasks', 'Campaigns', 'Dialer', 'Imports', 'Reports', 'Data Quality', 'Activity', 'Settings', 'Admin']) {
