@@ -6,33 +6,23 @@ const baseUrl = process.env.TEST_BASE_URL || 'http://127.0.0.1:8080';
 const email = `browser-${crypto.randomUUID()}@example.test`;
 const password = `B${crypto.randomBytes(24).toString('base64url')}!`;
 
-async function apiRequest(path, options = {}) {
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers: { 'content-type': 'application/json', origin: baseUrl, ...(options.headers || {}) }
-  });
-  const body = await response.json().catch(() => ({}));
-  return { response, body };
-}
-
 (async () => {
-  const signup = await apiRequest('/api/auth/sign-up/email', {
-    method: 'POST',
-    body: JSON.stringify({ name: 'Browser QA', email, password })
-  });
-  assert.equal(signup.response.status, 200, JSON.stringify(signup.body));
-
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   try {
     await page.goto(baseUrl, { waitUntil: 'networkidle' });
     await page.getByText('VORTEX ONE').first().waitFor();
+
+    // Exercise account creation in the real browser context so Better Auth's
+    // session cookie is established by the same browser that performs QA.
+    await page.getByRole('button', { name: 'Create an account', exact: true }).click();
+    await page.getByLabel('Name').fill('Browser QA');
     await page.getByLabel('Email').fill(email);
     await page.getByLabel('Password').fill(password);
     await Promise.all([
-      page.waitForResponse(response => response.url().endsWith('/api/auth/sign-in/email')),
-      page.getByRole('button', { name: 'Sign in', exact: true }).click()
+      page.waitForResponse(response => response.url().endsWith('/api/auth/sign-up/email')),
+      page.getByRole('button', { name: 'Create account', exact: true }).click()
     ]);
 
     const session = await page.evaluate(async () => {
@@ -52,7 +42,7 @@ async function apiRequest(path, options = {}) {
 
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await page.getByRole('heading', { name: 'Sign in', exact: true }).waitFor();
-    console.log('Browser smoke QA passed: authenticated sign-in, dashboard, all primary modules, and sign-out.');
+    console.log('Browser smoke QA passed: authenticated account creation, dashboard, all primary modules, and sign-out.');
   } finally {
     await browser.close();
   }
