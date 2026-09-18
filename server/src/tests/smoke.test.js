@@ -6,7 +6,7 @@ const baseUrl = process.env.TEST_BASE_URL || 'http://127.0.0.1:8080';
 async function request(path, options = {}) {
   return fetch(baseUrl + path, {
     ...options,
-    headers: { 'content-type': 'application/json', ...(options.headers || {}) }
+    headers: { 'content-type': 'application/json', origin: baseUrl, ...(options.headers || {}) }
   });
 }
 function cookieFrom(response) {
