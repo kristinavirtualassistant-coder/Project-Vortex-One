@@ -55,6 +55,16 @@ async function waitForServer() {
     const dashboardBody = await dashboard.json();
     assert.deepEqual(Object.keys(dashboardBody.counts).sort(), ['calls', 'leads', 'members', 'owners', 'properties']);
 
+    const reports = await request('/api/reports/overview', { headers: { Cookie: cookie } });
+    assert.equal(reports.status, 200);
+    const reportsBody = await reports.json();
+    assert.ok(reportsBody.totals);
+
+    const quality = await request('/api/data-quality/summary', { headers: { Cookie: cookie } });
+    assert.equal(quality.status, 200);
+    const qualityBody = await quality.json();
+    assert.equal(typeof qualityBody.issue_count, 'number');
+
     const signout = await request('/api/auth/sign-out', { method: 'POST', headers: { Cookie: cookie } });
     assert.equal(signout.status, 200, await signout.text());
     const protectedAfterSignout = await request('/api/foundation/dashboard', { headers: { Cookie: cookie } });
