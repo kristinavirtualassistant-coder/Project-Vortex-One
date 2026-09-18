@@ -38,8 +38,12 @@ jobs:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
       - name: Generate ephemeral CI secrets
         run: |
-          echo "BETTER_AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> "$GITHUB_ENV"
-          echo "JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" >> "$GITHUB_ENV"
+          BETTER_AUTH_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
+          JWT_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
+          echo "::add-mask::$BETTER_AUTH_SECRET"
+          echo "::add-mask::$JWT_SECRET"
+          echo "BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET" >> "$GITHUB_ENV"
+          echo "JWT_SECRET=$JWT_SECRET" >> "$GITHUB_ENV"
           echo "BETTER_AUTH_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
       - run: npx auth@latest migrate --yes
         env:
