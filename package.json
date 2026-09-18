@@ -4,7 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "concurrently \"node --watch server/src/index.js\" \"vite dev\"",
     "start": "node server/src/index.js",
     "build": "vite build && tsc --noEmit",
     "db:migrate": "node server/src/db/migrate.js",
