@@ -1,11 +1,10 @@
+import type { ReactNode } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { Outlet } from '@tanstack/react-router'
 import { createQueryClient } from '../lib/query-client'
-import '../styles.css'
 
 const queryClient = createQueryClient()
 
-export function RootLayout() {
+export function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -19,7 +18,7 @@ export function RootLayout() {
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-6 py-8">
-          <Outlet />
+          {children}
         </main>
       </div>
     </QueryClientProvider>
