@@ -2,11 +2,7 @@ import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { Pool } from 'pg'
 
-let authInstance: ReturnType<typeof betterAuth> | undefined
-
-export function getAuth(): ReturnType<typeof betterAuth> {
-  if (authInstance) return authInstance
-
+export function getAuth() {
   const connectionString = process.env.DATABASE_URL
   const secret = process.env.BETTER_AUTH_SECRET
   if (!connectionString) throw new Error('DATABASE_URL is required for Better Auth')
@@ -34,5 +30,5 @@ export function getAuth(): ReturnType<typeof betterAuth> {
     plugins: [tanstackStartCookies()],
   })
 
-  return (authInstance = auth)
+  return auth
 }
