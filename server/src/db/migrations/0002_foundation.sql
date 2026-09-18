@@ -1,6 +1,6 @@
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','admin','manager','rep','viewer'));
 UPDATE users SET role = 'rep' WHERE role = 'agent';
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('owner','admin','manager','rep','viewer'));
 
 CREATE TABLE IF NOT EXISTS organization_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
