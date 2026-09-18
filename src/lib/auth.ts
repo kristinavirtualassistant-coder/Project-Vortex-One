@@ -1,6 +1,5 @@
 import { betterAuth } from 'better-auth'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
-// @ts-expect-error pg's runtime package is available; CI may omit its ambient declaration.
 import { Pool } from 'pg'
 
 let authInstance: any
