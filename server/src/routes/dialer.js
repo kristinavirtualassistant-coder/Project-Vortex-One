@@ -9,6 +9,11 @@ router.use(auth);
 const canOperate = role => ['owner', 'admin', 'manager', 'rep'].includes(role);
 const terminalStatuses = new Set(['completed', 'failed', 'cancelled']);
 
+async function syncCampaignLeadStatus(callId, status) {
+  const campaignStatus = status === 'completed' ? 'completed' : status === 'failed' || status === 'cancelled' ? 'failed' : status === 'queued' ? 'queued' : 'calling';
+  await db.query(`UPDATE campaign_leads cl SET status=$2 WHERE cl.lead_id=(SELECT lead_id FROM calls WHERE id=$1) AND cl.campaign_id=(SELECT ds.campaign_id FROM calls ca JOIN dialer_sessions ds ON ds.id=ca.session_id AND ds.org_id=ca.org_id WHERE ca.id=$1)`, [callId, campaignStatus]);
+}
+
 function mapProviderStatus(status) {
   const value = String(status || '').toLowerCase();
   if (['success', 'completed', 'disconnected'].includes(value)) return 'completed';
@@ -93,6 +98,7 @@ router.post('/calls', async (req, res) => {
       }
     }
 
+    await syncCampaignLeadStatus(call.id, execution.status);
     await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,$3,'call',$4,$5)`, [req.user.orgId, req.user.userId, execution.status === 'failed' ? 'call.failed' : 'call.queued', call.id, { lead_id: leadId, session_id: sessionId, provider: execution.provider }]);
     const latest = await db.query('SELECT * FROM calls WHERE id=$1 AND org_id=$2', [call.id, req.user.orgId]);
     res.status(201).json({ call: latest.rows[0], execution });
@@ -110,6 +116,7 @@ router.get('/calls/:id/provider-status', async (req, res) => {
     if (!provider.configured) return res.status(503).json({ error: { code: 'PROVIDER_NOT_CONFIGURED', message: 'RingCentral is not configured' } });
     const mappedStatus = mapProviderStatus(provider.callStatus);
     const updated = await db.query(`UPDATE calls SET status=$3,started_at=CASE WHEN $3 IN ('ringing','in_progress','completed') THEN COALESCE(started_at,NOW()) ELSE started_at END,ended_at=CASE WHEN $3 IN ('completed','failed') THEN COALESCE(ended_at,NOW()) ELSE ended_at END WHERE id=$1 AND org_id=$2 AND user_id=$4 RETURNING *`, [call.id, req.user.orgId, mappedStatus, req.user.userId]);
+    await syncCampaignLeadStatus(call.id, mappedStatus);
     await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'call.provider_status_synced','call',$3,$4)`, [req.user.orgId, req.user.userId, call.id, { provider: 'ringcentral', provider_status: provider.callStatus, mapped_status: mappedStatus }]);
     res.json({ call: updated.rows[0], provider });
   } catch (error) { console.error(error); res.status(502).json({ error: { code: 'PROVIDER_STATUS_FAILED', message: 'Failed to synchronize provider call status' } }); }
@@ -126,6 +133,7 @@ router.patch('/calls/:id', async (req, res) => {
   try {
     const result = await db.query(`UPDATE calls SET status=COALESCE($3,status),disposition=COALESCE($4,disposition),ended_at=CASE WHEN $3 IN ('completed','failed','cancelled') THEN COALESCE(ended_at,NOW()) ELSE ended_at END,duration_seconds=COALESCE($5,duration_seconds) WHERE id=$1 AND org_id=$2 AND user_id=$6 RETURNING *`, [req.params.id, req.user.orgId, status, disposition, duration, req.user.userId]);
     if (!result.rows.length) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Call not found' } });
+    if (status && terminalStatuses.has(status)) await syncCampaignLeadStatus(result.rows[0].id, status);
     await db.query(`INSERT INTO audit_logs(organization_id,actor_user_id,action,entity_type,entity_id,details) VALUES($1,$2,'call.updated','call',$3,$4)`, [req.user.orgId, req.user.userId, result.rows[0].id, { status, disposition, duration_seconds: duration }]);
     res.json({ call: result.rows[0] });
   } catch (error) { console.error(error); res.status(500).json({ error: { code: 'CALL_UPDATE_FAILED', message: 'Failed to update call' } }); }
