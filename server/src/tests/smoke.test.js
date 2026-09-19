@@ -42,8 +42,9 @@ async function waitForServer() {
     assert.match(await home.text(), /Vortex One/i);
 
     const ready = await request('/api/ready');
-    assert.equal(ready.status, 200, await ready.text());
-    const readyBody = await ready.json();
+    const readyText = await ready.text();
+    assert.equal(ready.status, 200, readyText);
+    const readyBody = JSON.parse(readyText);
     assert.equal(readyBody.ready, true);
     assert.equal(readyBody.migrations.expected, readyBody.migrations.applied);
 
