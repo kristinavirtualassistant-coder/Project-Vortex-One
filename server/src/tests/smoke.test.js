@@ -49,9 +49,10 @@ async function waitForServer() {
     assert.equal(readyBody.migrations.expected, readyBody.migrations.applied);
 
     const email = `smoke-${crypto.randomUUID()}@example.test`;
+    const password = `S${crypto.randomBytes(24).toString('base64url')}!`;
     const signup = await request('/api/auth/sign-up/email', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Smoke Test', email, password: 'Smoke-test-123!' })
+      body: JSON.stringify({ name: 'Smoke Test', email, password })
     });
     assert.equal(signup.status, 200, await signup.text());
     const cookie = cookieFrom(signup);
@@ -61,6 +62,25 @@ async function waitForServer() {
     assert.equal(dashboard.status, 200);
     const dashboardBody = await dashboard.json();
     assert.deepEqual(Object.keys(dashboardBody.counts).sort(), ['calls', 'leads', 'members', 'owners', 'properties']);
+
+    const memberEmail = `member-${crypto.randomUUID()}@example.test`;
+    const memberPassword = `M${crypto.randomBytes(24).toString('base64url')}!`;
+    const member = await request('/api/foundation/members', {
+      method: 'POST',
+      headers: { Cookie: cookie },
+      body: JSON.stringify({ name: 'Smoke Member', email: memberEmail, password: memberPassword, role: 'rep' })
+    });
+    assert.equal(member.status, 201, await member.text());
+
+    const memberSignIn = await request('/api/auth/sign-in/email', {
+      method: 'POST',
+      body: JSON.stringify({ email: memberEmail, password: memberPassword })
+    });
+    assert.equal(memberSignIn.status, 200, await memberSignIn.text());
+    const memberCookie = cookieFrom(memberSignIn);
+    assert.ok(memberCookie, 'provisioned member did not receive an authentication session');
+    const memberDashboard = await request('/api/foundation/dashboard', { headers: { Cookie: memberCookie } });
+    assert.equal(memberDashboard.status, 200);
 
     const reports = await request('/api/reports/overview', { headers: { Cookie: cookie } });
     assert.equal(reports.status, 200);
@@ -77,7 +97,7 @@ async function waitForServer() {
     const protectedAfterSignout = await request('/api/foundation/dashboard', { headers: { Cookie: cookie } });
     assert.equal(protectedAfterSignout.status, 401);
 
-    console.log('Production smoke checks passed.');
+    console.log('Production smoke checks passed, including provisioned-member authentication.');
   } finally {
     server.kill('SIGTERM');
   }
