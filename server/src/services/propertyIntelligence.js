@@ -86,8 +86,8 @@ async function sourceStatus() {
   const la = laResult.status === 'fulfilled' ? laResult.value : null;
   const longBeach = longBeachResult.status === 'fulfilled' ? longBeachResult.value : null;
   return [
-    { provider: 'Los Angeles County Assessor parcel GIS', status: la?.name ? 'reachable' : 'unavailable', layer: la?.name || 'LACounty Parcel', source_url: LA_COUNTY_LAYER, last_edit_date: la?.editingInfo?.lastEditDate || null },
-    { provider: 'City of Long Beach Assessor Parcels', status: longBeach?.name ? 'reachable' : 'unavailable', layer: longBeach?.name || 'Assessor Parcels', source_url: LONG_BEACH_LAYER, last_edit_date: longBeach?.editingInfo?.lastEditDate || null }
+    { provider: 'los_angeles_county_assessor_gis', name: 'Los Angeles County Assessor parcel GIS', status: la?.name ? 'reachable' : 'unavailable', layer: la?.name || 'LACounty Parcel', source_url: LA_COUNTY_LAYER, last_edit_date: la?.editingInfo?.lastEditDate || null },
+    { provider: 'city_of_long_beach_assessor_parcels', name: 'City of Long Beach Assessor Parcels', status: longBeach?.name ? 'reachable' : 'unavailable', layer: longBeach?.name || 'Assessor Parcels', source_url: LONG_BEACH_LAYER, last_edit_date: longBeach?.editingInfo?.lastEditDate || null }
   ];
 }
 
