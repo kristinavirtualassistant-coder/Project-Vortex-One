@@ -49,6 +49,7 @@ jobs:
       - run: |
           npm run test:m1
           npm run test:workflows
+          npm run test:duplicates
           npm run test:smoke
         env: {DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test}
       - name: Install browser QA runtime
