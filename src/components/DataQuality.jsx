@@ -17,7 +17,8 @@ export default function DataQuality({ Panel }) {
     leads_with_invalid_property: 'Leads with invalid property reference',
     leads_with_invalid_owner: 'Leads with invalid owner reference',
     calls_with_invalid_lead: 'Calls with invalid lead reference',
-    properties_without_provenance: 'Properties without provenance'
+    properties_without_provenance: 'Properties without provenance',
+    duplicate_candidates_open: 'Duplicate candidates awaiting review'
   };
   return <Panel title="Data quality"><div className="metric-grid"><div className="metric"><span>Total issues</span><strong>{data.issue_count}</strong><small>Live organization count</small></div></div><div className="table-wrap"><table><thead><tr><th>Check</th><th>Issues</th></tr></thead><tbody>{Object.entries(labels).map(([key,label]) => <tr key={key}><td>{label}</td><td>{Number(data.summary?.[key] || 0)}</td></tr>)}</tbody></table></div><p className="muted">Generated {new Date(data.generated_at).toLocaleString()} from live organization-scoped records.</p></Panel>;
 }
