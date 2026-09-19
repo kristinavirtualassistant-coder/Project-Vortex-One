@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 const { Server } = require('socket.io');
 const leadsRoutes = require('./routes/leads');
@@ -36,6 +37,22 @@ const corsOptions = {
   }
 };
 
+function expectedMigrations() {
+  const migrationsDir = path.join(__dirname, 'db', 'migrations');
+  return fs.existsSync(migrationsDir)
+    ? fs.readdirSync(migrationsDir).filter(file => file.endsWith('.sql')).sort()
+    : [];
+}
+
+async function migrationStatus() {
+  const expected = expectedMigrations();
+  const result = await db.query('SELECT filename FROM schema_migrations ORDER BY filename');
+  const applied = new Set(result.rows.map(row => row.filename));
+  const pending = expected.filter(filename => !applied.has(filename));
+  const unknown = result.rows.map(row => row.filename).filter(filename => !expected.includes(filename));
+  return { expected: expected.length, applied: result.rows.length, pending, unknown };
+}
+
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -61,8 +78,15 @@ app.get('/api/health', async (req, res) => {
   catch { res.status(503).json({ ok: false, error: { code: 'DATABASE_UNAVAILABLE', message: 'Database unavailable' } }); }
 });
 app.get('/api/ready', async (req, res) => {
-  try { await db.query('SELECT 1'); res.json({ ok: true, service: 'vortex-one', ready: true }); }
-  catch { res.status(503).json({ ok: false, ready: false }); }
+  try {
+    await db.query('SELECT 1');
+    const migrations = await migrationStatus();
+    const ready = migrations.pending.length === 0 && migrations.unknown.length === 0;
+    if (!ready) return res.status(503).json({ ok: false, ready: false, migrations });
+    res.json({ ok: true, service: 'vortex-one', ready: true, migrations: { expected: migrations.expected, applied: migrations.applied } });
+  } catch {
+    res.status(503).json({ ok: false, ready: false });
+  }
 });
 
 app.use('/api/foundation', foundationRoutes);
