@@ -1,7 +1,7 @@
 name: Vortex One CI
 on:
   push:
-    branches: [main, codex/vortex-one-completion]
+    branches: [main, codex/vortex-one-completion, codex/vortex-one-finalization]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -14,8 +14,7 @@ jobs:
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: vortex_one_test
-        ports:
-          - 5432:5432
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres -d vortex_one_test"
           --health-interval 10s
@@ -24,21 +23,21 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v7
-        with:
-          node-version: 24
+        with: {node-version: 24}
       - run: npm install --no-audit --no-fund
       - run: npm run build
       - run: node --check server/src/index.js
       - run: node --check server/src/routes/property.js
       - run: node --check server/src/routes/owners.js
+      - run: node --check server/src/routes/contacts.js
+      - run: node --check server/src/routes/duplicates.js
       - run: node --check server/src/services/propertyIntelligence.js
       - run: node --check server/src/services/ringcentral.js
       - run: node --check server/src/routes/tasks.js
       - run: node --check server/src/routes/reports.js
       - run: node --check server/src/routes/dataQuality.js
       - run: npm run db:migrate
-        env:
-          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+        env: {DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test}
       - name: Generate ephemeral CI secrets
         run: |
           BETTER_AUTH_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
@@ -51,9 +50,11 @@ jobs:
       - run: |
           npm run test:m1
           npm run test:workflows
+          npm run test:duplicates
+          npm run test:contacts
+          npm run test:security
           npm run test:smoke
-        env:
-          DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
+        env: {DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test}
       - name: Install browser QA runtime
         run: |
           npm install --no-save --no-audit --no-fund playwright
