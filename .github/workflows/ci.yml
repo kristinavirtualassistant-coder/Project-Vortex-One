@@ -29,6 +29,7 @@ jobs:
       - run: node --check server/src/index.js
       - run: node --check server/src/routes/property.js
       - run: node --check server/src/routes/owners.js
+      - run: node --check server/src/routes/contacts.js
       - run: node --check server/src/routes/duplicates.js
       - run: node --check server/src/services/propertyIntelligence.js
       - run: node --check server/src/services/ringcentral.js
@@ -50,6 +51,7 @@ jobs:
           npm run test:m1
           npm run test:workflows
           npm run test:duplicates
+          npm run test:contacts
           npm run test:smoke
         env: {DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test}
       - name: Install browser QA runtime
