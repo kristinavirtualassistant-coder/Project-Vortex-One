@@ -1,7 +1,7 @@
 name: Vortex One CI
 on:
   push:
-    branches: [main, codex/vortex-one-completion]
+    branches: [main, codex/vortex-one-completion, codex/vortex-one-finalization]
   pull_request:
     branches: [main]
   workflow_dispatch:
