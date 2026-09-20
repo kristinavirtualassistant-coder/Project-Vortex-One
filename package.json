@@ -10,6 +10,9 @@
     "db:migrate": "node server/src/db/migrate.js",
     "test:m1": "node server/src/tests/m1-foundation.test.js",
     "test:workflows": "node server/src/tests/workflow.test.js",
+    "test:duplicates": "node server/src/tests/duplicates.test.js",
+    "test:contacts": "node server/src/tests/contacts.test.js",
+    "test:security": "node server/src/tests/security.test.js",
     "test:smoke": "node server/src/tests/smoke.test.js"
   },
   "dependencies": {
