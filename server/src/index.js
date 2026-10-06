@@ -19,6 +19,7 @@ const campaignsRoutes = require('./routes/campaigns');
 const dialerRoutes = require('./routes/dialer');
 const reportsRoutes = require('./routes/reports');
 const dataQualityRoutes = require('./routes/dataQuality');
+const publicRecordsRoutes = require('./routes/publicRecords');
 const betterAuth = require('./middleware/betterAuth');
 const db = require('./db');
 
@@ -65,6 +66,7 @@ app.use('/api/campaigns',campaignsRoutes);
 app.use('/api/dialer',dialerRoutes);
 app.use('/api/reports',reportsRoutes);
 app.use('/api/data-quality',dataQualityRoutes);
+app.use('/api/public-records',publicRecordsRoutes);
 
 const io=new Server(server,{cors:corsOptions});
 io.use((socket,next)=>{try{const jwt=require('jsonwebtoken');const token=socket.handshake.auth?.token;if(!token||!process.env.JWT_SECRET||process.env.JWT_SECRET.length<32)throw new Error('Unauthorized');socket.user=jwt.verify(token,process.env.JWT_SECRET);next();}catch{next(new Error('Unauthorized'));}});
