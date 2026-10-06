@@ -30,6 +30,7 @@ jobs:
       - run: npm run build
       - run: node --check server/src/index.js
       - run: node --check server/src/routes/property.js
+      - run: node --check server/src/routes/publicRecords.js
       - run: node --check server/src/routes/owners.js
       - run: node --check server/src/routes/tasks.js
       - run: node --check server/src/routes/reports.js
