@@ -1,6 +1,7 @@
 const express=require('express');
 const db=require('../db');
 const auth=require('../middleware/auth');
+const {ingestSource}=require('../services/publicRecordsIngestion');
 const router=express.Router();
 
 router.use(auth);
@@ -37,6 +38,13 @@ router.get('/search',async(req,res)=>{
   }
 });
 
+router.post('/ingest',async(req,res)=>{
+  if(!['admin','owner','manager'].includes(req.user.role))return res.status(403).json({error:{code:'FORBIDDEN',message:'Public-record ingestion requires an administrator role'}});
+  const sourceId=String(req.body?.sourceId||'').trim();
+  if(!sourceId)return res.status(400).json({error:{code:'SOURCE_REQUIRED',message:'sourceId is required'}});
+  try{const result=await ingestSource(sourceId,{maxRecords:req.body?.maxRecords});res.status(202).json(result);}
+  catch(err){console.error(err);res.status(502).json({error:{code:'PUBLIC_RECORD_INGEST_FAILED',message:err.message}});}
+});
 router.post('/import',async(req,res)=>{
   if(!writable(req.user.role)) return res.status(403).json({error:{code:'FORBIDDEN',message:'Public-record import denied'}});
   const parcels=Array.isArray(req.body?.parcels)?req.body.parcels.slice(0,100):[];
