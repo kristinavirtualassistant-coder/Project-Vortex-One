@@ -38,6 +38,27 @@ router.get('/search',async(req,res)=>{
   }
 });
 
+router.get('/sources',async(req,res)=>{
+  try{
+    const rows=await db.query('SELECT id,name,county_fips,source_type,url,last_run_at,last_count,schema_hash FROM core.sources ORDER BY name');
+    res.json({items:rows.rows});
+  }catch(err){
+    console.error(err);
+    res.status(500).json({error:{code:'PUBLIC_RECORD_SOURCES_FAILED',message:'Unable to list public-record sources'}});
+  }
+});
+
+router.get('/ingest-runs',async(req,res)=>{
+  try{
+    const limit=Math.min(Math.max(Number(req.query.limit)||25,1),100);
+    const rows=await db.query('SELECT r.id,r.source_id,s.name AS source_name,r.status,r.started_at,r.finished_at,r.fetched,r.changed,r.error FROM core.ingest_runs r JOIN core.sources s ON s.id=r.source_id ORDER BY r.started_at DESC LIMIT $1',[limit]);
+    res.json({items:rows.rows});
+  }catch(err){
+    console.error(err);
+    res.status(500).json({error:{code:'PUBLIC_RECORD_INGEST_RUNS_FAILED',message:'Unable to list ingestion runs'}});
+  }
+});
+
 router.post('/ingest',async(req,res)=>{
   if(!['admin','owner','manager'].includes(req.user.role))return res.status(403).json({error:{code:'FORBIDDEN',message:'Public-record ingestion requires an administrator role'}});
   const sourceId=String(req.body?.sourceId||'').trim();
