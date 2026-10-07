@@ -41,3 +41,17 @@ async function enrichOwner({orgId,ownerId,sourceName='manual_enrichment',sourceU
   }
 }
 module.exports={normalizeName,normalizeEmail,normalizePhone,enrichOwner,upsertContact};
+
+
+async function startFullEnrich({orgId,ownerId,firstName,lastName,companyName,domain,linkedinUrl,sourceKey}){
+  const apiKey=String(process.env.FULLENRICH_API_KEY||'').trim();
+  if(!apiKey)throw new Error('FULLENRICH_API_KEY is not configured');
+  const base=String(process.env.FULLENRICH_API_URL||'https://app.fullenrich.com').replace(/\\/$/,'');
+  const payload={name:'Vortex One owner enrichment',data:[{first_name:firstName||undefined,last_name:lastName||undefined,company_name:companyName||undefined,domain:domain||undefined,linkedin_url:linkedinUrl||undefined,enrich_fields:['contact.work_emails','contact.phones'],custom:{org_id:orgId,owner_id:ownerId,source_key:sourceKey||''}}]};
+  const response=await fetch(base+'/api/v2/contact/enrich/bulk',{method:'POST',headers:{Authorization:'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const text=await response.text();
+  if(!response.ok)throw new Error('FullEnrich start failed: HTTP '+response.status+' '+text.slice(0,500));
+  let data;try{data=JSON.parse(text);}catch{throw new Error('FullEnrich returned invalid JSON');}
+  return {enrichmentId:data.enrichment_id||data.id||null,raw:data};
+}
+module.exports.startFullEnrich=startFullEnrich;
