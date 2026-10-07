@@ -23,7 +23,8 @@ router.post('/:id/enrich/provider/:jobId/reconcile',async(req,res)=>{
     if(!run)return res.status(404).json({error:{code:'ENRICHMENT_JOB_NOT_FOUND',message:'Enrichment job not found'}});
     const providerResult=await getFullEnrichResult(req.params.jobId);
     const status=String(providerResult?.status||providerResult?.data?.status||providerResult?.result?.status||'').toLowerCase();
-    if(status && !['completed','complete','finished','success','succeeded'].includes(status)){
+    const completedStatuses=['completed','complete','finished','success','succeeded'];
+    if(!completedStatuses.includes(status)){
       return res.status(202).json({ok:true,provider:'fullenrich',runId:run.id,status:status||'pending',reconciled:false,result:providerResult});
     }
     const result=await reconcileFullEnrich({orgId:req.user.orgId,ownerId:owner.id,runId:run.id,payload:providerResult,sourceKey:req.params.jobId});
