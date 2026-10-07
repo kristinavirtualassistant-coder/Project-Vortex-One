@@ -70,4 +70,4 @@ async function ingestSource(sourceId,{maxRecords=1000}={}){
     throw error;
   }
 }
-module.exports={ingestSource};
+module.exports={ingestSource,normalize,hash,parseDate,arcgisGeometryToGeoJSON};
