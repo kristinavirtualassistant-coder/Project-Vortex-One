@@ -55,3 +55,14 @@ async function startFullEnrich({orgId,ownerId,firstName,lastName,companyName,dom
   return {enrichmentId:data.enrichment_id||data.id||null,raw:data};
 }
 module.exports.startFullEnrich=startFullEnrich;
+
+async function getFullEnrichResult(enrichmentId){
+  const apiKey=String(process.env.FULLENRICH_API_KEY||'').trim();
+  if(!apiKey)throw new Error('FULLENRICH_API_KEY is not configured');
+  const base=String(process.env.FULLENRICH_API_URL||'https://app.fullenrich.com').replace(/\\/$/,'');
+  const response=await fetch(base+'/api/v2/contact/enrich/bulk/'+encodeURIComponent(enrichmentId),{headers:{Authorization:'Bearer '+apiKey,Accept:'application/json'}});
+  const text=await response.text();
+  if(!response.ok)throw new Error('FullEnrich result failed: HTTP '+response.status+' '+text.slice(0,500));
+  try{return JSON.parse(text);}catch{throw new Error('FullEnrich returned invalid JSON');}
+}
+module.exports.getFullEnrichResult=getFullEnrichResult;
