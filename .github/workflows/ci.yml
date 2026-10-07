@@ -59,6 +59,7 @@ jobs:
           npm run test:duplicates
           npm run test:contacts
           npm run test:security
+          npm run test:public-record-ingestion
           npm run test:smoke
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
