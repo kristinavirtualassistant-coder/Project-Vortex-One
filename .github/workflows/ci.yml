@@ -33,6 +33,7 @@ jobs:
       - run: node --check server/src/routes/publicRecords.js
       - run: node --check server/src/services/publicRecordsIngestion.js
       - run: node --check server/src/services/ownerEnrichment.js
+      - run: node --check server/src/tests/owner-enrichment.test.js
       - run: node --check server/src/routes/owners.js
       - run: node --check server/src/routes/tasks.js
       - run: node --check server/src/routes/reports.js
@@ -61,6 +62,7 @@ jobs:
           npm run test:contacts
           npm run test:security
           npm run test:public-record-ingestion
+          npm run test:owner-enrichment
           npm run test:smoke
         env:
           DATABASE_URL: postgresql://postgres@127.0.0.1:5432/vortex_one_test
