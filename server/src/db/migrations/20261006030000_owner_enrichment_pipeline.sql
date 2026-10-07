@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS owner_enrichment_runs (
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   owner_id UUID REFERENCES owners(id) ON DELETE CASCADE,
   source_name VARCHAR(200) NOT NULL,
+  provider_job_id VARCHAR(255),
   status VARCHAR(30) NOT NULL DEFAULT 'completed' CHECK (status IN ('running','completed','failed')),
   requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   completed_at TIMESTAMPTZ,
