@@ -1,6 +1,6 @@
 const db=require('../db');
 
-function normalizeName(value){return String(value||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');}
+function normalizeName(value){return String(value||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');}
 function normalizeEmail(value){const v=String(value||'').trim().toLowerCase();return v||null;}
 function normalizePhone(value){const digits=String(value||'').replace(/\D/g,'');return digits?digits:null;}
 
@@ -84,14 +84,17 @@ async function enrichOwner({orgId,ownerId,sourceName='manual_enrichment',sourceU
 async function reconcileFullEnrich({orgId,ownerId,runId,payload,sourceKey}){
   const run=(await db.query("SELECT id,provider_job_id,status FROM owner_enrichment_runs WHERE id=$1 AND org_id=$2 AND owner_id=$3 AND source_name='fullenrich'",[runId,orgId,ownerId])).rows[0];
   if(!run)throw new Error('FullEnrich run not found');
-  if(run.status==='completed')return {runId:run.id,status:'completed',idempotent:true,contactsFound:0,phonesFound:0,emailsFound:0};
-  const contacts=extractFullEnrichContacts(payload);
   const client=await db.pool.connect();
   let phoneCount=0,emailCount=0;
   try{
     await client.query('BEGIN');
-    await client.query('SELECT id FROM owner_enrichment_runs WHERE id=$1 AND org_id=$2 FOR UPDATE',[run.id,orgId]);
-    await client.query('INSERT INTO owner_enrichment_sources(org_id,owner_id,source_name,source_key,source_url,confidence,payload) VALUES($1,$2,\'fullenrich\',$3,$4,$5,$6)',[orgId,ownerId,sourceKey||run.provider_job_id,null,contacts[0]?.confidence||0.9,payload||{}]);
+    const locked=(await client.query('SELECT id,status FROM owner_enrichment_runs WHERE id=$1 AND org_id=$2 FOR UPDATE',[run.id,orgId])).rows[0];
+    if(locked.status==='completed'){
+      await client.query('ROLLBACK');
+      return {runId:run.id,status:'completed',idempotent:true,contactsFound:0,phonesFound:0,emailsFound:0};
+    }
+    const contacts=extractFullEnrichContacts(payload);
+    await client.query('INSERT INTO owner_enrichment_sources(org_id,owner_id,source_name,source_key,source_url,confidence,payload) VALUES($1,$2,$3,$4,$5,$6,$7)',[orgId,ownerId,'fullenrich',sourceKey||run.provider_job_id,null,contacts[0]?.confidence||0.9,payload||{}]);
     for(const contact of contacts){
       const base={firstName:contact.firstName,lastName:contact.lastName,displayName:contact.displayName,title:contact.title,mailingAddress:contact.mailingAddress};
       let contactId=null;
@@ -111,7 +114,7 @@ async function reconcileFullEnrich({orgId,ownerId,runId,payload,sourceKey}){
     return {runId:run.id,status:'completed',idempotent:false,contactsFound:contacts.length,phonesFound:phoneCount,emailsFound:emailCount};
   }catch(error){
     await client.query('ROLLBACK').catch(()=>{});
-    await db.query("UPDATE owner_enrichment_runs SET status='failed',completed_at=NOW(),error=$2 WHERE id=$1 AND org_id=$3",[run.id,String(error.message).slice(0,2000),orgId]).catch(()=>{});
+    await db.query("UPDATE owner_enrichment_runs SET status='failed',completed_at=NOW(),error=$2 WHERE id=$1 AND org_id=$3 AND status<>'completed'",[run.id,String(error.message).slice(0,2000),orgId]).catch(()=>{});
     throw error;
   }finally{client.release();}
 }
