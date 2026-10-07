@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');
 const {normalizeName,normalizeEmail,normalizePhone,extractFullEnrichContacts}=require('../services/ownerEnrichment');
 
-assert.equal(normalizeName(' José  García, LLC '),'jos garcia llc');
+assert.equal(normalizeName(' José  García, LLC '),'jose garcia llc');
 assert.equal(normalizeEmail('  TEST@Example.COM '),'test@example.com');
 assert.equal(normalizePhone('(415) 555-1212'),'4155551212');
 
@@ -25,7 +25,7 @@ assert.deepEqual(contacts[0].phones,['14155551212']);
 
 const duplicatePayload={data:[
   {contact:{name:'Jane Doe',emails:['jane.doe@example.com']}},
-  {contact:{name:'Jane Doe',phones:['14155551212']}}
+  {contact:{name:'Jane Doe',emails:['JANE.DOE@example.com'],phones:['14155551212']}}
 ]};
 const deduped=extractFullEnrichContacts(duplicatePayload);
 assert.equal(deduped.length,1);
