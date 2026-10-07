@@ -50,21 +50,21 @@ function extractFullEnrichContacts(payload){
   return [...merged.values()];
 }
 
-async function upsertContact({orgId,ownerId,contact,sourceName,sourceUrl,confidence=0.5}){
+async function upsertContact({orgId,ownerId,contact,sourceName,sourceUrl,confidence=0.5,executor=db}){
   const displayName=String(contact.displayName||contact.name||'').trim()||null;
   const email=normalizeEmail(contact.email);
   const phone=normalizePhone(contact.phone);
   let row;
-  if(email) row=(await db.query('SELECT c.id FROM contacts c JOIN contact_emails ce ON ce.contact_id=c.id WHERE c.org_id=$1 AND c.owner_id=$2 AND LOWER(ce.email)=LOWER($3) LIMIT 1',[orgId,ownerId,email])).rows[0];
-  if(!row&&phone) row=(await db.query("SELECT c.id FROM contacts c JOIN contact_phones cp ON cp.contact_id=c.id WHERE c.org_id=$1 AND c.owner_id=$2 AND regexp_replace(cp.phone,'\\D','','g')=$3 LIMIT 1",[orgId,ownerId,phone])).rows[0];
-  if(!row) row=(await db.query('INSERT INTO contacts(org_id,owner_id,first_name,last_name,display_name,title,mailing_address) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',[orgId,ownerId,contact.firstName||null,contact.lastName||null,displayName,contact.title||null,contact.mailingAddress||null])).rows[0];
-  if(email) await db.query('INSERT INTO contact_emails(contact_id,email,email_type,is_primary,confidence,source_name,source_url,source_updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,NOW()) ON CONFLICT(contact_id,email) DO UPDATE SET confidence=GREATEST(COALESCE(contact_emails.confidence,0),EXCLUDED.confidence),source_name=EXCLUDED.source_name,source_url=EXCLUDED.source_url,source_updated_at=NOW()',[row.id,email,'enrichment',true,confidence,sourceName,sourceUrl||null]);
-  if(phone) await db.query('INSERT INTO contact_phones(contact_id,phone,phone_type,is_primary,confidence,source_name,source_url,source_updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,NOW()) ON CONFLICT(contact_id,phone) DO UPDATE SET confidence=GREATEST(COALESCE(contact_phones.confidence,0),EXCLUDED.confidence),source_name=EXCLUDED.source_name,source_url=EXCLUDED.source_url,source_updated_at=NOW()',[row.id,phone,'enrichment',true,confidence,sourceName,sourceUrl||null]);
+  if(email) row=(await executor.query('SELECT c.id FROM contacts c JOIN contact_emails ce ON ce.contact_id=c.id WHERE c.org_id=$1 AND c.owner_id=$2 AND LOWER(ce.email)=LOWER($3) LIMIT 1',[orgId,ownerId,email])).rows[0];
+  if(!row&&phone) row=(await executor.query("SELECT c.id FROM contacts c JOIN contact_phones cp ON cp.contact_id=c.id WHERE c.org_id=$1 AND c.owner_id=$2 AND regexp_replace(cp.phone,'\\D','','g')=$3 LIMIT 1",[orgId,ownerId,phone])).rows[0];
+  if(!row) row=(await executor.query('INSERT INTO contacts(org_id,owner_id,first_name,last_name,display_name,title,mailing_address) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',[orgId,ownerId,contact.firstName||null,contact.lastName||null,displayName,contact.title||null,contact.mailingAddress||null])).rows[0];
+  if(email) await executor.query('INSERT INTO contact_emails(contact_id,email,email_type,is_primary,confidence,source_name,source_url,source_updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,NOW()) ON CONFLICT(contact_id,email) DO UPDATE SET confidence=GREATEST(COALESCE(contact_emails.confidence,0),EXCLUDED.confidence),source_name=EXCLUDED.source_name,source_url=EXCLUDED.source_url,source_updated_at=NOW()',[row.id,email,'enrichment',true,confidence,sourceName,sourceUrl||null]);
+  if(phone) await executor.query('INSERT INTO contact_phones(contact_id,phone,phone_type,is_primary,confidence,source_name,source_url,source_updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,NOW()) ON CONFLICT(contact_id,phone) DO UPDATE SET confidence=GREATEST(COALESCE(contact_phones.confidence,0),EXCLUDED.confidence),source_name=EXCLUDED.source_name,source_url=EXCLUDED.source_url,source_updated_at=NOW()',[row.id,phone,'enrichment',true,confidence,sourceName,sourceUrl||null]);
   return row.id;
 }
 
-async function recordEnrichment({orgId,ownerId,sourceName,sourceKey,sourceUrl,payload,confidence=0.5}){
-  return db.query('INSERT INTO owner_enrichment_sources(org_id,owner_id,source_name,source_key,source_url,confidence,payload) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',[orgId,ownerId,sourceName,sourceKey||null,sourceUrl||null,confidence,payload||{}]);
+async function recordEnrichment({orgId,ownerId,sourceName,sourceKey,sourceUrl,payload,confidence=0.5,executor=db}){
+  return executor.query('INSERT INTO owner_enrichment_sources(org_id,owner_id,source_name,source_key,source_url,confidence,payload) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id',[orgId,ownerId,sourceName,sourceKey||null,sourceUrl||null,confidence,payload||{}]);
 }
 
 async function enrichOwner({orgId,ownerId,sourceName='manual_enrichment',sourceUrl=null,sourceKey=null,contact={}}){
@@ -96,12 +96,12 @@ async function reconcileFullEnrich({orgId,ownerId,runId,payload,sourceKey}){
       const base={firstName:contact.firstName,lastName:contact.lastName,displayName:contact.displayName,title:contact.title,mailingAddress:contact.mailingAddress};
       let contactId=null;
       for(const email of contact.emails){
-        contactId=await upsertContact({orgId,ownerId,contact:{...base,email},sourceName:'fullenrich',sourceUrl:null,confidence:contact.confidence});
+        contactId=await upsertContact({orgId,ownerId,contact:{...base,email},sourceName:'fullenrich',sourceUrl:null,confidence:contact.confidence,executor:client});
         emailCount++;
         await client.query('INSERT INTO provenance(org_id,entity_type,entity_id,field_name,source_value,method) VALUES($1,\'contact\',$2,\'email\',$3,\'provider_enrichment\')',[orgId,contactId,email]);
       }
       for(const phone of contact.phones){
-        contactId=await upsertContact({orgId,ownerId,contact:{...base,phone},sourceName:'fullenrich',sourceUrl:null,confidence:contact.confidence});
+        contactId=await upsertContact({orgId,ownerId,contact:{...base,phone},sourceName:'fullenrich',sourceUrl:null,confidence:contact.confidence,executor:client});
         phoneCount++;
         await client.query('INSERT INTO provenance(org_id,entity_type,entity_id,field_name,source_value,method) VALUES($1,\'contact\',$2,\'phone\',$3,\'provider_enrichment\')',[orgId,contactId,phone]);
       }
