@@ -15,7 +15,7 @@
     "test:security": "node server/src/tests/security.test.js",
     "test:smoke": "node server/src/tests/smoke.test.js",
     "test:public-record-ingestion": "node server/src/tests/public-record-ingestion.test.js",
-    "test:owner-enrichment": "node server/src/tests/owner-enrichment.test.js"
+    "test:owner-enrichment": "node server/src/tests/owner-enrichment.test.js && node server/src/tests/owner-enrichment-worker.test.js"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.1",
