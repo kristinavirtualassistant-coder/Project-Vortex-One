@@ -22,6 +22,7 @@ const dataQualityRoutes = require('./routes/dataQuality');
 const publicRecordsRoutes = require('./routes/publicRecords');
 const betterAuth = require('./middleware/betterAuth');
 const db = require('./db');
+const {startOwnerEnrichmentWorker}=require('./services/ownerEnrichmentWorker');
 
 const app = express();
 const server = http.createServer(app);
@@ -78,4 +79,4 @@ app.get('*',(req,res)=>{if(req.path.startsWith('/api/'))return res.status(404).j
 app.use((err,req,res,next)=>{console.error(err);if(res.headersSent)return next(err);res.status(500).json({error:{code:'INTERNAL_ERROR',message:'Internal server error'}});});
 
 const port=Number(process.env.PORT||8080);
-server.listen(port,'0.0.0.0',()=>console.log('Vortex One listening on '+port));
+server.listen(port,'0.0.0.0',()=>{console.log('Vortex One listening on '+port);startOwnerEnrichmentWorker();});
